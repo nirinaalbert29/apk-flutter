@@ -1,396 +1,272 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_application_projet/db_helper.dart';
+import 'db_helper.dart'; // Assurez-vous d'importer votre fichier db_helper
 
 class HomeScreen extends StatefulWidget {
   @override
-  State<HomeScreen> createState() => _HomeScreenState();
+  _HomeScreenState createState() => _HomeScreenState();
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-  List<Map<String, dynamic>> _allEtudiants = [];
   bool _isLoading = true;
-
-  final TextEditingController _matriculeController = TextEditingController();
-  final TextEditingController _nomController = TextEditingController();
-  final TextEditingController _prenomController = TextEditingController();
-  final TextEditingController _cinController = TextEditingController();
-  final TextEditingController _telController = TextEditingController();
-  final TextEditingController _niveauController = TextEditingController();
-  final TextEditingController _filiereController = TextEditingController();
-
-  int? _editingEtudiantId;
-
-  void _refreshData() async {
-    final etudiants = await SQLHelper.getAllEtudiants();
-    setState(() {
-      _allEtudiants = etudiants;
-      _isLoading = false;
-    });
-  }
+  List<Map<String, dynamic>> _personnelList = [];
+  List<Map<String, dynamic>> _filteredPersonnelList = [];
+  TextEditingController _searchController = TextEditingController();
 
   @override
   void initState() {
     super.initState();
-    _refreshData();
+    _refreshPersonnel(); // Charger les données quand l'écran est initialisé
+    _searchController
+        .addListener(_searchPersonnel); // Ajout du listener pour la recherche
   }
 
-  Future<void> _addEtudiant() async {
-    final matricule = _matriculeController.text;
+  // Charger les données du personnel depuis la base de données
+  void _refreshPersonnel() async {
+    final data = await SQLHelper.getAllPersonnel();
+    setState(() {
+      _personnelList = data;
+      _filteredPersonnelList = data; // Par défaut, on affiche tout
+      _isLoading = false;
+    });
+  }
 
-    if (await SQLHelper.studentExists(matricule)) {
-      // Matricule déjà existant, empêcher l'ajout
-      showDialog(
-        context: context,
-        builder: (BuildContext context) {
-          return AlertDialog(
-            title: Text("Erreur d'ajout"),
-            content: Text("Un étudiant avec ce matricule existe déjà."),
-            actions: <Widget>[
-              TextButton(
-                child: Text('OK'),
-                onPressed: () {
-                  Navigator.of(context).pop();
-                },
-              ),
-            ],
-          );
+  // Fonction pour ajouter ou modifier du personnel
+  Future<void> _showPersonnelForm({Map<String, dynamic>? personnel}) async {
+    String title =
+        personnel == null ? 'Ajouter un personnel' : 'Modifier un personnel';
+
+    await showDialog(
+      context: context,
+      builder: (context) => PersonnelForm(
+        personnel: personnel,
+        onSave: (matricule, nom, prenom, cin, tel, poste) {
+          if (personnel == null) {
+            _addPersonnel(matricule, nom, prenom, cin, tel, poste);
+          } else {
+            _updatePersonnel(
+                personnel['id'], matricule, nom, prenom, cin, tel, poste);
+          }
         },
-      );
+      ),
+    );
+  }
+
+  // Ajouter un personnel
+  void _addPersonnel(String matricule, String nom, String prenom, String cin,
+      String tel, String poste) async {
+    await SQLHelper.createPersonnel(matricule, nom, prenom, cin, tel, poste);
+    _refreshPersonnel();
+  }
+
+  // Mettre à jour un personnel
+  void _updatePersonnel(int id, String matricule, String nom, String prenom,
+      String cin, String tel, String poste) async {
+    await SQLHelper.updatePersonnel(
+        id, matricule, nom, prenom, cin, tel, poste);
+    _refreshPersonnel();
+  }
+
+  // Supprimer un personnel
+  void _deletePersonnel(int id) async {
+    await SQLHelper.deletePersonnel(id);
+    _refreshPersonnel();
+  }
+
+  // Fonction de recherche
+  void _searchPersonnel() async {
+    final query = _searchController.text;
+    if (query.isEmpty) {
+      setState(() {
+        _filteredPersonnelList = _personnelList;
+      });
     } else {
-      // Matricule unique, poursuivre l'ajout
-      await SQLHelper.createEtudiant(
-        _matriculeController.text,
-        _nomController.text,
-        _prenomController.text,
-        _cinController.text,
-        _telController.text,
-        _niveauController.text,
-        _filiereController.text,
-      );
-      _refreshData();
-      _clearControllers();
-      Navigator.of(context).pop(); // Fermer le modal après ajout
+      final results = await SQLHelper.searchPersonnel(query);
+      setState(() {
+        _filteredPersonnelList = results;
+      });
     }
   }
 
-  Future<void> _updateEtudiant(int id) async {
-    final matricule = _matriculeController.text;
-
-    if (matricule !=
-        _allEtudiants
-            .firstWhere((etudiant) => etudiant['id'] == id)['matricule']) {
-      // Le matricule a été modifié
-      if (await SQLHelper.studentExist(matricule, id)) {
-        // Matricule déjà existant pour un autre étudiant, empêcher la modification
-        showDialog(
-          context: context,
-          builder: (BuildContext context) {
-            return AlertDialog(
-              title: Text("Erreur de modification"),
-              content: Text("Ce matricule existe déjà pour un autre étudiant."),
-              actions: <Widget>[
-                TextButton(
-                  child: Text('OK'),
-                  onPressed: () {
-                    Navigator.of(context).pop();
-                  },
-                ),
-              ],
-            );
-          },
-        );
-      } else {
-        // Matricule unique, poursuivre la modification
-        await SQLHelper.updateEtudiant(
-          id,
-          _matriculeController.text,
-          _nomController.text,
-          _prenomController.text,
-          _cinController.text,
-          _telController.text,
-          _niveauController.text,
-          _filiereController.text,
-        );
-        _refreshData();
-        _clearControllers();
-        Navigator.of(context).pop(); // Fermer le modal après mise à jour
-      }
-    } else {
-      // Le matricule n'a pas été modifié, effectuer la mise à jour normalement
-      await SQLHelper.updateEtudiant(
-        id,
-        _matriculeController.text,
-        _nomController.text,
-        _prenomController.text,
-        _cinController.text,
-        _telController.text,
-        _niveauController.text,
-        _filiereController.text,
-      );
-      _refreshData();
-      _clearControllers();
-      Navigator.of(context).pop(); // Fermer le modal après mise à jour
-    }
-  }
-
-  void _deleteEtudiant(int id) async {
-    await SQLHelper.deleteEtudiant(id);
-    _refreshData();
-  }
-
-  void showStudentDetailsDialog(Map<String, dynamic> student) {
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: Text("Détails de l'étudiant"),
-          content: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text("Nom: ${student['nom']}"),
-              Text("Prénom: ${student['prenom']}"),
-              Text("Matricule: ${student['matricule']}"),
-              Text("CIN: ${student['cin']}"),
-              Text("Tél: ${student['tel']}"),
-              Text("Niveau: ${student['niveau']}"),
-              Text("Filière: ${student['filiere']}"),
-            ],
-          ),
-          actions: <Widget>[
-            TextButton(
-              child: Text('Fermer'),
-              onPressed: () {
-                Navigator.of(context).pop();
-              },
-            ),
-          ],
-        );
-      },
-    );
-  }
-
-  void _clearControllers() {
-    _matriculeController.text = '';
-    _nomController.text = '';
-    _prenomController.text = '';
-    _cinController.text = '';
-    _telController.text = '';
-    _niveauController.text = '';
-    _filiereController.text = '';
-  }
-
-  void _showAddEtudiantModal() {
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: Text("Ajouter un étudiant"),
-          content: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                TextFormField(
-                  controller: _matriculeController,
-                  decoration: InputDecoration(labelText: "Matricule"),
-                ),
-                TextFormField(
-                  controller: _nomController,
-                  decoration: InputDecoration(labelText: "Nom"),
-                ),
-                TextFormField(
-                  controller: _prenomController,
-                  decoration: InputDecoration(labelText: "Prénom"),
-                ),
-                TextFormField(
-                  controller: _cinController,
-                  decoration: InputDecoration(labelText: "CIN"),
-                  keyboardType: TextInputType.number,
-                ),
-                TextFormField(
-                  controller: _telController,
-                  decoration: InputDecoration(labelText: "Téléphone"),
-                  keyboardType: TextInputType.number,
-                ),
-                TextFormField(
-                  controller: _niveauController,
-                  decoration: InputDecoration(labelText: "Niveau"),
-                ),
-                TextFormField(
-                  controller: _filiereController,
-                  decoration: InputDecoration(labelText: "Filière"),
-                ),
-              ],
-            ),
-          ),
-          actions: <Widget>[
-            TextButton(
-              child: Text('Annuler'),
-              onPressed: () {
-                Navigator.of(context).pop();
-              },
-            ),
-            TextButton(
-              child: Text('Ajouter'),
-              onPressed: () {
-                _addEtudiant();
-              },
-            ),
-          ],
-        );
-      },
-    );
-  }
-
-  void _showUpdateEtudiantModal(Map<String, dynamic> student) {
-    _editingEtudiantId = student['id'];
-    _matriculeController.text = student['matricule'];
-    _nomController.text = student['nom'];
-    _prenomController.text = student['prenom'];
-    _cinController.text = student['cin'];
-    _telController.text = student['tel'];
-    _niveauController.text = student['niveau'];
-    _filiereController.text = student['filiere'];
-
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: Text("Mettre à jour l'étudiant"),
-          content: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                TextFormField(
-                  controller: _matriculeController,
-                  decoration: InputDecoration(labelText: "Matricule"),
-                ),
-                TextFormField(
-                  controller: _nomController,
-                  decoration: InputDecoration(labelText: "Nom"),
-                ),
-                TextFormField(
-                  controller: _prenomController,
-                  decoration: InputDecoration(labelText: "Prénom"),
-                ),
-                TextFormField(
-                  controller: _cinController,
-                  decoration: InputDecoration(labelText: "CIN"),
-                  keyboardType: TextInputType.number,
-                ),
-                TextFormField(
-                  controller: _telController,
-                  decoration: InputDecoration(labelText: "Téléphone"),
-                  keyboardType: TextInputType.number,
-                ),
-                TextFormField(
-                  controller: _niveauController,
-                  decoration: InputDecoration(labelText: "Niveau"),
-                ),
-                TextFormField(
-                  controller: _filiereController,
-                  decoration: InputDecoration(labelText: "Filière"),
-                ),
-              ],
-            ),
-          ),
-          actions: <Widget>[
-            TextButton(
-              child: Text('Annuler'),
-              onPressed: () {
-                _editingEtudiantId = null;
-                Navigator.of(context).pop();
-              },
-            ),
-            TextButton(
-              child: Text('Mettre à jour'),
-              onPressed: () async {
-                final matricule = _matriculeController.text;
-                // Vérifier si le matricule a été modifié
-                if (matricule != student['matricule']) {
-                  // Vérifier si le nouveau matricule existe déjà
-                  if (await SQLHelper.studentExist(
-                      matricule, _editingEtudiantId)) {
-                    // Afficher un message d'erreur et ne pas effectuer la mise à jour
-                    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                      content: Text(
-                          "Ce matricule existe déjà. La mise à jour a échoué."),
-                    ));
-                    return;
-                  }
-                }
-                _updateEtudiant(_editingEtudiantId!);
-              },
-            ),
-          ],
-        );
-      },
-    );
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Color(0xFFECEAF4),
       appBar: AppBar(
-        title: Text("Gestion des Étudiants"),
-      ),
-      body: _isLoading
-          ? Center(
-              child: CircularProgressIndicator(),
-            )
-          : ListView.builder(
-              itemCount: _allEtudiants.length,
-              itemBuilder: (context, index) => Card(
-                margin: EdgeInsets.all(15),
-                child: ListTile(
-                  title: Padding(
-                    padding: EdgeInsets.symmetric(vertical: 5),
-                    child: Text(
-                      "${_allEtudiants[index]['nom'].toUpperCase()} ${_allEtudiants[index]['prenom']}",
-                      style: TextStyle(fontSize: 20.0),
-                    ),
-                  ),
-                  subtitle: Text(_allEtudiants[index]['matricule']),
-                  trailing: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      IconButton(
-                        onPressed: () {
-                          showStudentDetailsDialog(_allEtudiants[index]);
-                        },
-                        icon: Icon(
-                          Icons.visibility,
-                          color: Colors.green,
-                        ),
-                      ),
-                      IconButton(
-                        onPressed: () {
-                          _showUpdateEtudiantModal(_allEtudiants[index]);
-                        },
-                        icon: Icon(
-                          Icons.edit,
-                          color: Colors.indigo,
-                        ),
-                      ),
-                      IconButton(
-                        onPressed: () {
-                          _deleteEtudiant(_allEtudiants[index]['id']);
-                        },
-                        icon: Icon(
-                          Icons.delete,
-                          color: Colors.redAccent,
-                        ),
-                      ),
-                    ],
-                  ),
+        title: const Text('Gestion du Personnel'),
+        actions: [
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 8.0),
+            child: SizedBox(
+              width: 200,
+              child: TextField(
+                controller: _searchController,
+                decoration: const InputDecoration(
+                  hintText: 'Rechercher...',
+                  border: InputBorder.none,
+                  hintStyle: TextStyle(color: Colors.white),
                 ),
+                style: const TextStyle(color: Colors.white),
               ),
             ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () => _showAddEtudiantModal(),
-        child: Icon(Icons.add),
+          ),
+        ],
       ),
+      body: _isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : _filteredPersonnelList.isEmpty
+              ? const Center(child: Text('Aucun personnel trouvé.'))
+              : ListView.builder(
+                  itemCount: _filteredPersonnelList.length,
+                  itemBuilder: (context, index) => Card(
+                    margin: const EdgeInsets.all(15),
+                    child: ListTile(
+                      title: Text(
+                          '${_filteredPersonnelList[index]['nom']} ${_filteredPersonnelList[index]['prenom']}'),
+                      subtitle: Text(
+                          'Matricule: ${_filteredPersonnelList[index]['matricule']}'),
+                      trailing: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          IconButton(
+                            icon: const Icon(Icons.edit),
+                            onPressed: () => _showPersonnelForm(
+                                personnel: _filteredPersonnelList[index]),
+                          ),
+                          IconButton(
+                            icon: const Icon(Icons.delete),
+                            onPressed: () => _deletePersonnel(
+                                _filteredPersonnelList[index]['id']),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+      floatingActionButton: FloatingActionButton(
+        onPressed: () => _showPersonnelForm(), // Afficher le formulaire d'ajout
+        child: const Icon(Icons.add),
+      ),
+    );
+  }
+}
+
+// Formulaire pour ajouter ou modifier du personnel
+class PersonnelForm extends StatefulWidget {
+  final Map<String, dynamic>? personnel;
+  final Function(String, String, String, String, String, String) onSave;
+
+  PersonnelForm({this.personnel, required this.onSave});
+
+  @override
+  _PersonnelFormState createState() => _PersonnelFormState();
+}
+
+class _PersonnelFormState extends State<PersonnelForm> {
+  final _formKey = GlobalKey<FormState>();
+  final TextEditingController _matriculeController = TextEditingController();
+  final TextEditingController _nomController = TextEditingController();
+  final TextEditingController _prenomController = TextEditingController();
+  final TextEditingController _cinController = TextEditingController();
+  final TextEditingController _telController = TextEditingController();
+  final TextEditingController _posteController = TextEditingController();
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.personnel != null) {
+      _matriculeController.text = widget.personnel!['matricule'];
+      _nomController.text = widget.personnel!['nom'];
+      _prenomController.text = widget.personnel!['prenom'];
+      _cinController.text = widget.personnel!['cin'];
+      _telController.text = widget.personnel!['tel'];
+      _posteController.text = widget.personnel!['poste'];
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: Text(widget.personnel == null
+          ? 'Ajouter un nouveau personnel'
+          : 'Modifier le personnel'),
+      content: Form(
+        key: _formKey,
+        child: SingleChildScrollView(
+          child: Column(
+            children: [
+              TextFormField(
+                controller: _matriculeController,
+                decoration: const InputDecoration(labelText: 'Matricule'),
+                validator: (value) => value == null || value.isEmpty
+                    ? 'Veuillez entrer le matricule'
+                    : null,
+              ),
+              TextFormField(
+                controller: _nomController,
+                decoration: const InputDecoration(labelText: 'Nom'),
+                validator: (value) => value == null || value.isEmpty
+                    ? 'Veuillez entrer le nom'
+                    : null,
+              ),
+              TextFormField(
+                controller: _prenomController,
+                decoration: const InputDecoration(labelText: 'Prénom'),
+                validator: (value) => value == null || value.isEmpty
+                    ? 'Veuillez entrer le prénom'
+                    : null,
+              ),
+              TextFormField(
+                controller: _cinController,
+                decoration: const InputDecoration(labelText: 'CIN'),
+                validator: (value) => value == null || value.isEmpty
+                    ? 'Veuillez entrer le CIN'
+                    : null,
+              ),
+              TextFormField(
+                controller: _telController,
+                decoration: const InputDecoration(labelText: 'Téléphone'),
+                validator: (value) => value == null || value.isEmpty
+                    ? 'Veuillez entrer le numéro de téléphone'
+                    : null,
+              ),
+              TextFormField(
+                controller: _posteController,
+                decoration: const InputDecoration(labelText: 'Poste'),
+                validator: (value) => value == null || value.isEmpty
+                    ? 'Veuillez entrer le poste'
+                    : null,
+              ),
+            ],
+          ),
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: const Text('Annuler'),
+        ),
+        ElevatedButton(
+          onPressed: () {
+            if (_formKey.currentState!.validate()) {
+              widget.onSave(
+                _matriculeController.text,
+                _nomController.text,
+                _prenomController.text,
+                _cinController.text,
+                _telController.text,
+                _posteController.text,
+              );
+              Navigator.of(context).pop();
+            }
+          },
+          child: const Text('Sauvegarder'),
+        ),
+      ],
     );
   }
 }
