@@ -45,6 +45,15 @@ dependencies:
   #formateur de l'heure package
   intl: ^0.19.0
 
+  #dependance pour le pdf
+  pdf: ^3.10.8
+  open_file: ^3.3.2
+
+  #preciser l'emplacement de fichier à exporté
+  file_picker: ^5.3.1
+
+  permission_handler: ^10.2.0
+
 dev_dependencies:
   flutter_test:
     sdk: flutter

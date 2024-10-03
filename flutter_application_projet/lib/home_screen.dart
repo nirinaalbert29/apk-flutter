@@ -107,20 +107,33 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Gestion du Personnel'),
+        title: const Text(
+          'Personnels',
+          style: TextStyle(
+            color: Color.fromARGB(255, 255, 255, 255),
+          ),
+        ),
+        backgroundColor: Color.fromARGB(255, 45, 62, 189),
         actions: [
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 8.0),
             child: SizedBox(
-              width: 200,
+              width: 145,
+              height: 40,
               child: TextField(
                 controller: _searchController,
-                decoration: const InputDecoration(
+                decoration: InputDecoration(
                   hintText: 'Rechercher...',
-                  border: InputBorder.none,
-                  hintStyle: TextStyle(color: Color.fromARGB(255, 17, 27, 109)),
+                  hintStyle: TextStyle(color: Colors.white),
+                  prefixIcon: Icon(Icons.search, color: Colors.white),
+                  filled: true,
+                  fillColor: Colors.blue[800],
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(10),
+                    borderSide: BorderSide.none,
+                  ),
                 ),
-                style: const TextStyle(color: Color.fromARGB(255, 79, 197, 24)),
+                style: TextStyle(color: Colors.white),
               ),
             ),
           ),
@@ -134,26 +147,41 @@ class _HomeScreenState extends State<HomeScreen> {
                   itemCount: _filteredPersonnelList.length,
                   itemBuilder: (context, index) => Card(
                     margin: const EdgeInsets.all(15),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10.0),
+                    ),
+                    elevation: 10,
                     child: ListTile(
+                      contentPadding: const EdgeInsets.all(5),
                       title: Text(
-                          '${_filteredPersonnelList[index]['nom']} ${_filteredPersonnelList[index]['prenom']}'),
+                        '${_filteredPersonnelList[index]['nom']} ${_filteredPersonnelList[index]['prenom']}',
+                        style: TextStyle(
+                          color: Color.fromARGB(255, 33, 46, 148),
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
                       subtitle: Text(
-                          'Matricule: ${_filteredPersonnelList[index]['matricule']}'),
+                        'Matricule: ${_filteredPersonnelList[index]['matricule']}',
+                        style: TextStyle(color: Colors.grey[600]),
+                      ),
                       trailing: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           IconButton(
                             icon: const Icon(Icons.visibility),
+                            color: Color.fromARGB(255, 11, 85, 48),
                             onPressed: () =>
                                 _viewDetails(_filteredPersonnelList[index]),
                           ),
                           IconButton(
                             icon: const Icon(Icons.edit),
+                            color: Color.fromARGB(255, 10, 37, 112),
                             onPressed: () => _showPersonnelForm(
                                 personnel: _filteredPersonnelList[index]),
                           ),
                           IconButton(
                             icon: const Icon(Icons.delete),
+                            color: const Color.fromARGB(255, 78, 9, 4),
                             onPressed: () => _deletePersonnel(
                                 _filteredPersonnelList[index]['id']),
                           ),
@@ -164,6 +192,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
       floatingActionButton: FloatingActionButton(
         onPressed: () => _showPersonnelForm(), // Afficher le formulaire d'ajout
+        backgroundColor: Color.fromARGB(255, 26, 36, 177),
         child: const Icon(Icons.add),
       ),
     );
@@ -206,6 +235,9 @@ class _PersonnelFormState extends State<PersonnelForm> {
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(20.0),
+      ),
       title: Text(widget.personnel == null
           ? 'Ajouter un nouveau personnel'
           : 'Modifier le personnel'),
@@ -246,7 +278,7 @@ class _PersonnelFormState extends State<PersonnelForm> {
                 controller: _telController,
                 decoration: const InputDecoration(labelText: 'Téléphone'),
                 validator: (value) => value == null || value.isEmpty
-                    ? 'Veuillez entrer le numéro de téléphone'
+                    ? 'Veuillez entrer le téléphone'
                     : null,
               ),
               TextFormField(
@@ -262,6 +294,10 @@ class _PersonnelFormState extends State<PersonnelForm> {
       ),
       actions: [
         TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: const Text('Annuler'),
+        ),
+        ElevatedButton(
           onPressed: () {
             if (_formKey.currentState!.validate()) {
               widget.onSave(
@@ -275,24 +311,9 @@ class _PersonnelFormState extends State<PersonnelForm> {
               Navigator.of(context).pop();
             }
           },
-          child: const Text('Enregistrer'),
-        ),
-        TextButton(
-          onPressed: () => Navigator.of(context).pop(),
-          child: const Text('Annuler'),
+          child: const Text('Sauvegarder'),
         ),
       ],
     );
-  }
-
-  @override
-  void dispose() {
-    _matriculeController.dispose();
-    _nomController.dispose();
-    _prenomController.dispose();
-    _cinController.dispose();
-    _telController.dispose();
-    _posteController.dispose();
-    super.dispose();
   }
 }
