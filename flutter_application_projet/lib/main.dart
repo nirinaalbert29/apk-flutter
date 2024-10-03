@@ -3,9 +3,6 @@ import 'package:flutter_application_projet/PresenceListPage.dart';
 import 'package:flutter_application_projet/QRScanPage.dart';
 import 'package:flutter_application_projet/dashboard.dart';
 import 'package:flutter_application_projet/home_screen.dart';
-// import 'package:flutter_application_projet/bourse_page.dart';
-// import 'package:flutter_application_projet/control_page.dart';
-// import 'package:flutter_application_projet/versement_page.dart';
 
 void main() {
   runApp(const MyApp());

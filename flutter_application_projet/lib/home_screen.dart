@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'db_helper.dart'; // Assurez-vous d'importer votre fichier db_helper
+import 'PersonnelDetails.dart'; // Assurez-vous d'importer le fichier PersonnelDetails
 
 class HomeScreen extends StatefulWidget {
   @override
@@ -72,6 +73,15 @@ class _HomeScreenState extends State<HomeScreen> {
     _refreshPersonnel();
   }
 
+  // Afficher les détails d'un personnel avec QR code
+  void _viewDetails(Map<String, dynamic> personnel) {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) => PersonnelDetails(personnel: personnel),
+      ),
+    );
+  }
+
   // Fonction de recherche
   void _searchPersonnel() async {
     final query = _searchController.text;
@@ -132,6 +142,11 @@ class _HomeScreenState extends State<HomeScreen> {
                       trailing: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
+                          IconButton(
+                            icon: const Icon(Icons.visibility),
+                            onPressed: () =>
+                                _viewDetails(_filteredPersonnelList[index]),
+                          ),
                           IconButton(
                             icon: const Icon(Icons.edit),
                             onPressed: () => _showPersonnelForm(
@@ -247,10 +262,6 @@ class _PersonnelFormState extends State<PersonnelForm> {
       ),
       actions: [
         TextButton(
-          onPressed: () => Navigator.of(context).pop(),
-          child: const Text('Annuler'),
-        ),
-        ElevatedButton(
           onPressed: () {
             if (_formKey.currentState!.validate()) {
               widget.onSave(
@@ -264,9 +275,24 @@ class _PersonnelFormState extends State<PersonnelForm> {
               Navigator.of(context).pop();
             }
           },
-          child: const Text('Sauvegarder'),
+          child: const Text('Enregistrer'),
+        ),
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: const Text('Annuler'),
         ),
       ],
     );
+  }
+
+  @override
+  void dispose() {
+    _matriculeController.dispose();
+    _nomController.dispose();
+    _prenomController.dispose();
+    _cinController.dispose();
+    _telController.dispose();
+    _posteController.dispose();
+    super.dispose();
   }
 }
