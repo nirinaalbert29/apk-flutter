@@ -119,9 +119,9 @@ class SQLHelper {
     );
   }
 
-  // Ajouter une présence
-  static Future<int> addPresence(String matricule, String statut,
-      String periode, String datePresence) async {
+  // Ajouter une présence avec gestion du décalage horaire
+  static Future<int> addPresence(
+      String matricule, String statut, String periode) async {
     await initDB(); // Assurez-vous que la base de données est initialisée
     final db = _database;
 
@@ -130,11 +130,18 @@ class SQLHelper {
       return -1;
     }
 
+    final DateTime now = DateTime.now().toUtc();
+    final String isoDate =
+        now.toIso8601String(); // Horodatage ajusté pour presence_time
+    final String formattedDatePresence =
+        "${now.year}-${now.month}-${now.day}"; // Format AAAA-MM-JJ pour date_presence
+
     final data = {
       'matricule': matricule,
       'statut': statut,
       'periode': periode,
-      'date_presence': datePresence,
+      'presence_time': isoDate,
+      'date_presence': formattedDatePresence,
     };
     return await db.insert('presence', data);
   }

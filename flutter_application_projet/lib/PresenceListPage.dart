@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'db_helper.dart';
+import 'package:intl/intl.dart'; // Utilisé pour le formatage des dates
 
 class PresenceListPage extends StatefulWidget {
   @override
@@ -15,6 +16,7 @@ class _PresenceListPageState extends State<PresenceListPage> {
     _loadPresenceData();
   }
 
+  // Charger les données de présence
   Future<void> _loadPresenceData() async {
     final data = await SQLHelper.getAllPresence();
     setState(() {
@@ -22,6 +24,7 @@ class _PresenceListPageState extends State<PresenceListPage> {
     });
   }
 
+  // Afficher les détails de présence avec le personnel
   void _showPresenceDetails(Map<String, dynamic> presence) async {
     // Récupérer les détails du personnel
     final personnel =
@@ -30,6 +33,11 @@ class _PresenceListPageState extends State<PresenceListPage> {
       showDialog(
         context: context,
         builder: (BuildContext context) {
+          // Formatage de la date en tenant compte du décalage de 3 heures
+          final DateTime originalDate =
+              DateTime.parse(presence['presence_time']).add(Duration(hours: 3));
+          final String formattedDate = DateFormat('HH:mm').format(originalDate);
+
           return AlertDialog(
             title: Text("Détails de présence"),
             content: Column(
@@ -41,7 +49,8 @@ class _PresenceListPageState extends State<PresenceListPage> {
                 Text("CIN: ${personnel['cin']}"),
                 Text("Tel: ${personnel['tel']}"),
                 Text("Poste: ${personnel['poste']}"),
-                Text("Date: ${presence['presence_time']}"),
+                Text("Date: ${presence['date_presence']}"),
+                Text("Heure de présence: $formattedDate"),
                 Text("Statut: ${presence['statut']}"),
                 Text("Période: ${presence['periode']}"),
               ],
@@ -92,10 +101,18 @@ class _PresenceListPageState extends State<PresenceListPage> {
               itemCount: _presenceList.length,
               itemBuilder: (context, index) {
                 final presence = _presenceList[index];
+
+                // Correction du décalage horaire pour l'affichage de l'heure de présence
+                final DateTime originalDate =
+                    DateTime.parse(presence['presence_time'])
+                        .add(Duration(hours: 3));
+                final String formattedDate =
+                    DateFormat('HH:mm').format(originalDate);
+
                 return ListTile(
                   title: Text('Matricule: ${presence['matricule']}'),
                   subtitle: Text(
-                    'Date: ${presence['presence_time']}, Statut: ${presence['statut']}, Période: ${presence['periode']}',
+                    'Date: ${presence['date_presence']}, Heure: $formattedDate, Statut: ${presence['statut']}, Période: ${presence['periode']}',
                   ),
                   trailing: IconButton(
                     icon: Icon(Icons.info),

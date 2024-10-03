@@ -1,8 +1,6 @@
-import 'dart:developer';
 import 'package:flutter/material.dart';
 import 'package:qr_code_scanner/qr_code_scanner.dart';
 import 'db_helper.dart'; // Assurez-vous que le chemin d'importation est correct.
-// import 'PresenceListPage.dart'; // Importez votre page de liste de présences.
 
 class QRScanPage extends StatefulWidget {
   @override
@@ -13,6 +11,7 @@ class _QRScanPageState extends State<QRScanPage> {
   final GlobalKey qrKey = GlobalKey(debugLabel: 'QR');
   Barcode? result;
   QRViewController? controller;
+  bool isProcessing = false; // Pour éviter les appels multiples
 
   @override
   void dispose() {
@@ -23,10 +22,13 @@ class _QRScanPageState extends State<QRScanPage> {
   @override
   void reassemble() {
     super.reassemble();
-    controller!.pauseCamera();
-    controller!.resumeCamera();
+    if (controller != null) {
+      controller!.pauseCamera();
+      controller!.resumeCamera();
+    }
   }
 
+  // Modal pour afficher les détails du personnel
   void _showPersonnelModal(Map<String, dynamic> personnel) {
     showDialog(
       context: context,
@@ -53,8 +55,11 @@ class _QRScanPageState extends State<QRScanPage> {
                   ),
                   TextButton(
                     onPressed: () {
-                      // Redirection vers la page de liste des présences
-                      Navigator.pushReplacementNamed(context, '/Presence');
+                      Navigator.of(context).pop(); // Fermer le modal
+                      setState(() {
+                        result = null; // Réinitialiser le matricule détecté
+                      });
+                      _resumeCamera(); // Reprendre la caméra après la fermeture du modal
                     },
                     child: Text('Retour'),
                   ),
@@ -67,62 +72,74 @@ class _QRScanPageState extends State<QRScanPage> {
     );
   }
 
+  // Fonction pour enregistrer la présence
   Future<void> _savePresence(String matricule) async {
-    // Obtenir l'heure locale actuelle
     final DateTime now = DateTime.now();
-
-    // Conserver l'heure locale actuelle sans ajustement pour le stockage
-    final String isoDate = now.toIso8601String();
-
-    // Déterminer le période en fonction de l'heure actuelle
     final String periode = now.hour < 12 ? 'matin' : 'après-midi';
-
-    // Définir l'heure limite pour la présence
     final DateTime heureLimite = periode == 'matin'
         ? DateTime(now.year, now.month, now.day, 8, 15)
         : DateTime(now.year, now.month, now.day, 14, 15);
+    bool isAfterDelai = now.isAfter(heureLimite);
+    final String statut = isAfterDelai ? 'Absent(e)' : 'Présent(e)';
 
-    // Vérifier si l'heure actuelle est après l'heure limite
-    bool isafter_delai = now.isAfter(heureLimite);
-    final String statut = isafter_delai ? 'Absent(e)' : 'Présent(e)';
+    // Enregistrement dans la base de données
+    await SQLHelper.addPresence(matricule, statut, periode);
 
-    // Enregistrement dans la base de données avec l'heure au format ISO 8601
-    await SQLHelper.addPresence(matricule, statut, periode,
-        isoDate); // Utiliser la date sans ajustement
-
-    // Fermer le modal
-    Navigator.of(context).pop();
-
-    // Redirection vers la page de liste des présences
-    Navigator.pushReplacementNamed(context, '/Presence-list');
-
-    print("Heure actuelle (locale): $now"); // Vérifiez l'heure locale
-    print("Période: $periode");
-    print("Heure limite: $heureLimite");
-    print("Statut: $statut");
-    print("AFTER DELAY : $isafter_delai");
+    // Fermer le modal et rediriger vers la liste des présences
+    Navigator.of(context).pop(); // Fermer la boîte de dialogue
+    Navigator.pushReplacementNamed(
+        context, '/Presence-list'); // Aller à la liste des présences
   }
 
+  // Vérification du personnel par matricule
   Future<void> _checkPersonnel(String matricule) async {
+    if (isProcessing)
+      return; // Si un traitement est en cours, on ne refait pas l'action
+    setState(() {
+      isProcessing = true; // Bloquer l'action jusqu'à la fin du traitement
+    });
+
     final personnel = await SQLHelper.getPersonnelByMatricule(matricule);
     if (personnel != null) {
       _showPersonnelModal(personnel);
     } else {
-      showDialog(
-        context: context,
-        builder: (BuildContext context) {
-          return AlertDialog(
-            title: Text('Erreur'),
-            content: Text('Matricule invalide !'),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.of(context).pop(),
-                child: Text('OK'),
-              ),
-            ],
-          );
-        },
-      );
+      _showErrorDialog(); // Afficher l'erreur si matricule invalide
+    }
+
+    setState(() {
+      isProcessing = false; // Fin du traitement
+    });
+  }
+
+  // Modal d'erreur pour matricule invalide
+  void _showErrorDialog() {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text('Erreur'),
+          content: Text('Matricule invalide !'),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop(); // Fermer le modal
+                setState(() {
+                  result = null; // Réinitialiser le matricule détecté
+                });
+                _resumeCamera(); // Reprendre la caméra après la fermeture du modal
+              },
+              child: Text('OK'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  // Reprendre la caméra après la fermeture d'un modal
+  void _resumeCamera() {
+    if (controller != null) {
+      controller!.resumeCamera();
     }
   }
 
@@ -131,6 +148,12 @@ class _QRScanPageState extends State<QRScanPage> {
     return Scaffold(
       appBar: AppBar(
         title: Text('Scanner le QR Code'),
+        leading: IconButton(
+          icon: Icon(Icons.arrow_back),
+          onPressed: () {
+            Navigator.pop(context); // Retourner à la page précédente
+          },
+        ),
       ),
       body: Column(
         children: <Widget>[
@@ -161,15 +184,21 @@ class _QRScanPageState extends State<QRScanPage> {
     );
   }
 
+  // Lorsque le QR code est scanné
   void _onQRViewCreated(QRViewController controller) {
     this.controller = controller;
     controller.scannedDataStream.listen((scanData) {
-      setState(() {
-        result = scanData;
-      });
+      if (!isProcessing && result == null) {
+        setState(() {
+          result = scanData;
+        });
 
-      if (result != null) {
-        _checkPersonnel(result!.code!); // Matricule est dans result.code
+        // Pauser la caméra pour éviter les scans multiples
+        controller.pauseCamera();
+
+        if (result != null) {
+          _checkPersonnel(result!.code!); // Vérifier le matricule
+        }
       }
     });
   }
