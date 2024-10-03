@@ -54,7 +54,7 @@ class _HomeScreenState extends State<HomeScreen> {
   // Ajouter un personnel
   void _addPersonnel(String matricule, String nom, String prenom, String cin,
       String tel, String poste) async {
-    await SQLHelper.createPersonnel(matricule, nom, prenom, cin, tel, poste);
+    await SQLHelper.addPersonnel(matricule, nom, prenom, cin, tel, poste);
     _refreshPersonnel();
   }
 
@@ -108,9 +108,9 @@ class _HomeScreenState extends State<HomeScreen> {
                 decoration: const InputDecoration(
                   hintText: 'Rechercher...',
                   border: InputBorder.none,
-                  hintStyle: TextStyle(color: Colors.white),
+                  hintStyle: TextStyle(color: Color.fromARGB(255, 17, 27, 109)),
                 ),
-                style: const TextStyle(color: Colors.white),
+                style: const TextStyle(color: Color.fromARGB(255, 79, 197, 24)),
               ),
             ),
           ),

@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_application_projet/PresenceListPage.dart';
+import 'package:flutter_application_projet/QRScanPage.dart';
 import 'package:flutter_application_projet/dashboard.dart';
 import 'package:flutter_application_projet/home_screen.dart';
 // import 'package:flutter_application_projet/bourse_page.dart';
@@ -24,9 +26,8 @@ class MyApp extends StatelessWidget {
       routes: {
         '/': (context) => Dashboard(),
         '/Personnels': (context) => HomeScreen(),
-        // '/Présence': (context) => BoursePage(),
-        // '/controls': (context) => ControlPage(),
-        // '/versements': (context) => VersementPage(),
+        '/Presence': (context) => QRScanPage(),
+        '/Presence-list': (context) => PresenceListPage(),
       },
     );
   }

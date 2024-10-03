@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_application_projet/PresenceListPage.dart';
 import 'package:flutter_application_projet/home_screen.dart';
-// import 'package:flutter_application_projet/bourse_page.dart';
-// import 'package:flutter_application_projet/control_page.dart';
+import 'package:flutter_application_projet/QRScanPage.dart';
 // import 'package:flutter_application_projet/versement_page.dart';
 
 class Dashboard extends StatelessWidget {
@@ -25,28 +25,28 @@ class Dashboard extends StatelessWidget {
             },
             child: const Text("Gestion des personnels"),
           ),
-          // ElevatedButton(
-          //   onPressed: () {
-          //     Navigator.push(
-          //       context,
-          //       MaterialPageRoute(
-          //         builder: (context) => BoursePage(),
-          //       ),
-          //     );
-          //   },
-          //   child: Text("Gestion des Bourses"),
-          // ),
-          // ElevatedButton(
-          //   onPressed: () {
-          //     Navigator.push(
-          //       context,
-          //       MaterialPageRoute(
-          //         builder: (context) => ControlPage(),
-          //       ),
-          //     );
-          //   },
-          //   child: Text("Contrôle des Étudiants"),
-          // ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => QRScanPage(),
+                ),
+              );
+            },
+            child: Text("Effectuer nouveau présence"),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => PresenceListPage(),
+                ),
+              );
+            },
+            child: Text("Liste de présence éffectué"),
+          ),
           // ElevatedButton(
           //   onPressed: () {
           //     Navigator.push(
